@@ -51,6 +51,15 @@ export function SourcesPage() {
     }
   }
 
+  const handleToggleAutoApprove = async (source: Source) => {
+    try {
+      await sourcesApi.update(source.id, { auto_approve: !source.auto_approve })
+      fetchSources()
+    } catch (err) {
+      console.error('Failed to toggle auto_approve:', err)
+    }
+  }
+
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this source?')) return
     try {
@@ -131,6 +140,9 @@ export function SourcesPage() {
                   Archive
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Trusted
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Last Checked
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -196,6 +208,20 @@ export function SourcesPage() {
                       />
                     </button>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <button
+                      onClick={() => handleToggleAutoApprove(source)}
+                      className={`w-10 h-6 rounded-full transition-colors ${
+                        source.auto_approve ? 'bg-yellow-500' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`block w-4 h-4 bg-white rounded-full transform transition-transform ${
+                          source.auto_approve ? 'translate-x-5' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {source.last_checked_at
                       ? new Date(source.last_checked_at).toLocaleString()
@@ -245,6 +271,7 @@ function SourceForm({
     enabled: source?.enabled ?? true,
     aggregate: source?.aggregate ?? false,
     auto_archive: source?.auto_archive ?? true,
+    auto_approve: source?.auto_approve ?? false,
     auto_transcribe: source?.auto_transcribe ?? false,
     auto_summarize: source?.auto_summarize ?? false,
     config: source?.config || {},
@@ -347,6 +374,17 @@ function SourceForm({
             />
             <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
               Auto Archive
+            </span>
+          </label>
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={formData.auto_approve}
+              onChange={(e) => setFormData({ ...formData, auto_approve: e.target.checked })}
+              className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+            />
+            <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+              Trusted (Auto-Approve)
             </span>
           </label>
           <label className="flex items-center">

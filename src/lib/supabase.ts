@@ -15,6 +15,7 @@ export interface Source {
   enabled: boolean
   aggregate: boolean
   auto_archive: boolean
+  auto_approve: boolean
   auto_transcribe: boolean
   auto_summarize: boolean
   config: Record<string, unknown>
@@ -40,6 +41,7 @@ export interface ContentItem {
   published_at: string | null
   discovered_at: string
   processed_at: string | null
+  approved: boolean
   sources?: Source
 }
 

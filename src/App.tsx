@@ -6,6 +6,7 @@ import { DashboardPage } from './pages/Dashboard'
 import { SourcesPage } from './pages/Sources'
 import { ItemsPage } from './pages/Items'
 import { QueuePage } from './pages/Queue'
+import { ReviewPage } from './pages/Review'
 
 // Create query client
 const queryClient = new QueryClient()
@@ -38,8 +39,14 @@ const queueRoute = createRoute({
   component: QueuePage,
 })
 
+const reviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/review',
+  component: ReviewPage,
+})
+
 // Build route tree
-const routeTree = rootRoute.addChildren([indexRoute, sourcesRoute, itemsRoute, queueRoute])
+const routeTree = rootRoute.addChildren([indexRoute, sourcesRoute, itemsRoute, queueRoute, reviewRoute])
 
 // Create router
 const router = createRouter({ routeTree })

@@ -5,6 +5,7 @@ const navItems = [
   { path: '/', label: 'Dashboard' },
   { path: '/sources', label: 'Sources' },
   { path: '/items', label: 'Items' },
+  { path: '/review', label: 'Review' },
   { path: '/queue', label: 'Queue' },
 ]
 
