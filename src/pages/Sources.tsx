@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Layout } from '../components/Layout'
 import { sourcesApi } from '../api/sources'
-import type { Source, SourceCreate } from '../lib/supabase'
+import type { Source, SourceCreate, SourceUpdate } from '../lib/supabase'
 
 export function SourcesPage() {
   const [sources, setSources] = useState<Source[]>([])
@@ -57,6 +57,16 @@ export function SourcesPage() {
       fetchSources()
     } catch (err) {
       console.error('Failed to toggle auto_approve:', err)
+    }
+  }
+
+  const handleBulkToggle = async (field: keyof SourceUpdate) => {
+    const allOn = sources.every((s) => s[field as keyof Source])
+    try {
+      await sourcesApi.bulkUpdate(field, !allOn)
+      fetchSources()
+    } catch (err) {
+      console.error(`Failed to bulk toggle ${field}:`, err)
     }
   }
 
@@ -131,16 +141,40 @@ export function SourcesPage() {
                   Type
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Enabled
+                  <button
+                    onClick={() => handleBulkToggle('enabled')}
+                    className="hover:text-green-500 transition-colors"
+                    title={sources.every(s => s.enabled) ? 'Disable all' : 'Enable all'}
+                  >
+                    Enabled
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Aggregate
+                  <button
+                    onClick={() => handleBulkToggle('aggregate')}
+                    className="hover:text-blue-500 transition-colors"
+                    title={sources.every(s => s.aggregate) ? 'Remove all from feed' : 'Add all to feed'}
+                  >
+                    Aggregate
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Archive
+                  <button
+                    onClick={() => handleBulkToggle('auto_archive')}
+                    className="hover:text-purple-500 transition-colors"
+                    title={sources.every(s => s.auto_archive) ? 'Disable all archiving' : 'Enable all archiving'}
+                  >
+                    Archive
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Trusted
+                  <button
+                    onClick={() => handleBulkToggle('auto_approve')}
+                    className="hover:text-yellow-500 transition-colors"
+                    title={sources.every(s => s.auto_approve) ? 'Untrust all' : 'Trust all'}
+                  >
+                    Trusted
+                  </button>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Last Checked

@@ -68,4 +68,14 @@ export const sourcesApi = {
   async toggleAggregate(id: number, aggregate: boolean): Promise<Source> {
     return this.update(id, { aggregate })
   },
+
+  // Bulk update a field on all sources
+  async bulkUpdate(field: keyof SourceUpdate, value: boolean): Promise<void> {
+    const { error } = await supabase
+      .from('sources')
+      .update({ [field]: value, updated_at: new Date().toISOString() })
+      .neq('id', 0) // matches all rows
+
+    if (error) throw error
+  },
 }
