@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Layout } from '../components/Layout'
 import { sourcesApi } from '../api/sources'
 import type { Source, SourceCreate, SourceUpdate } from '../lib/supabase'
@@ -140,78 +140,38 @@ export function SourcesPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Type
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                  <button
-                    onClick={() => handleBulkToggle('enabled')}
-                    className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider transition-colors ${
-                      sources.every(s => s.enabled)
-                        ? 'text-green-600 dark:text-green-400'
-                        : sources.some(s => s.enabled)
-                        ? 'text-green-400 dark:text-green-600'
-                        : 'text-gray-500 dark:text-gray-400'
-                    } hover:text-green-500`}
-                    title={sources.every(s => s.enabled) ? 'Disable all' : 'Enable all'}
-                  >
-                    <span className={`inline-block w-2 h-2 rounded-full ${
-                      sources.every(s => s.enabled) ? 'bg-green-500' : sources.some(s => s.enabled) ? 'bg-green-300' : 'bg-gray-300 dark:bg-gray-600'
-                    }`} />
-                    Enabled
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                  <button
-                    onClick={() => handleBulkToggle('aggregate')}
-                    className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider transition-colors ${
-                      sources.every(s => s.aggregate)
-                        ? 'text-blue-600 dark:text-blue-400'
-                        : sources.some(s => s.aggregate)
-                        ? 'text-blue-400 dark:text-blue-600'
-                        : 'text-gray-500 dark:text-gray-400'
-                    } hover:text-blue-500`}
-                    title={sources.every(s => s.aggregate) ? 'Remove all from feed' : 'Add all to feed'}
-                  >
-                    <span className={`inline-block w-2 h-2 rounded-full ${
-                      sources.every(s => s.aggregate) ? 'bg-blue-500' : sources.some(s => s.aggregate) ? 'bg-blue-300' : 'bg-gray-300 dark:bg-gray-600'
-                    }`} />
-                    Aggregate
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                  <button
-                    onClick={() => handleBulkToggle('auto_archive')}
-                    className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider transition-colors ${
-                      sources.every(s => s.auto_archive)
-                        ? 'text-purple-600 dark:text-purple-400'
-                        : sources.some(s => s.auto_archive)
-                        ? 'text-purple-400 dark:text-purple-600'
-                        : 'text-gray-500 dark:text-gray-400'
-                    } hover:text-purple-500`}
-                    title={sources.every(s => s.auto_archive) ? 'Disable all archiving' : 'Enable all archiving'}
-                  >
-                    <span className={`inline-block w-2 h-2 rounded-full ${
-                      sources.every(s => s.auto_archive) ? 'bg-purple-500' : sources.some(s => s.auto_archive) ? 'bg-purple-300' : 'bg-gray-300 dark:bg-gray-600'
-                    }`} />
-                    Archive
-                  </button>
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                  <button
-                    onClick={() => handleBulkToggle('auto_approve')}
-                    className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider transition-colors ${
-                      sources.every(s => s.auto_approve)
-                        ? 'text-yellow-600 dark:text-yellow-400'
-                        : sources.some(s => s.auto_approve)
-                        ? 'text-yellow-400 dark:text-yellow-600'
-                        : 'text-gray-500 dark:text-gray-400'
-                    } hover:text-yellow-500`}
-                    title={sources.every(s => s.auto_approve) ? 'Untrust all' : 'Trust all'}
-                  >
-                    <span className={`inline-block w-2 h-2 rounded-full ${
-                      sources.every(s => s.auto_approve) ? 'bg-yellow-500' : sources.some(s => s.auto_approve) ? 'bg-yellow-300' : 'bg-gray-300 dark:bg-gray-600'
-                    }`} />
-                    Trusted
-                  </button>
-                </th>
+                <ToggleColumnHeader
+                  label="Enabled"
+                  description="Check this source for new content on a schedule"
+                  field="enabled"
+                  sources={sources}
+                  color="green"
+                  onBulkToggle={handleBulkToggle}
+                />
+                <ToggleColumnHeader
+                  label="Aggregate"
+                  description="Include items from this source in the public feed"
+                  field="aggregate"
+                  sources={sources}
+                  color="blue"
+                  onBulkToggle={handleBulkToggle}
+                />
+                <ToggleColumnHeader
+                  label="Archive"
+                  description="Automatically download and archive content locally"
+                  field="auto_archive"
+                  sources={sources}
+                  color="purple"
+                  onBulkToggle={handleBulkToggle}
+                />
+                <ToggleColumnHeader
+                  label="Trusted"
+                  description="Auto-approve items for the public feed without manual review"
+                  field="auto_approve"
+                  sources={sources}
+                  color="yellow"
+                  onBulkToggle={handleBulkToggle}
+                />
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Last Checked
                 </th>
@@ -486,5 +446,90 @@ function SourceForm({
         </div>
       </form>
     </div>
+  )
+}
+
+const colorClasses: Record<string, { text: string; textPartial: string; dot: string; dotPartial: string; dotOff: string }> = {
+  green: {
+    text: 'text-green-600 dark:text-green-400',
+    textPartial: 'text-green-400 dark:text-green-600',
+    dot: 'bg-green-500',
+    dotPartial: 'bg-green-300',
+    dotOff: 'bg-gray-300 dark:bg-gray-600',
+  },
+  blue: {
+    text: 'text-blue-600 dark:text-blue-400',
+    textPartial: 'text-blue-400 dark:text-blue-600',
+    dot: 'bg-blue-500',
+    dotPartial: 'bg-blue-300',
+    dotOff: 'bg-gray-300 dark:bg-gray-600',
+  },
+  purple: {
+    text: 'text-purple-600 dark:text-purple-400',
+    textPartial: 'text-purple-400 dark:text-purple-600',
+    dot: 'bg-purple-500',
+    dotPartial: 'bg-purple-300',
+    dotOff: 'bg-gray-300 dark:bg-gray-600',
+  },
+  yellow: {
+    text: 'text-yellow-600 dark:text-yellow-400',
+    textPartial: 'text-yellow-400 dark:text-yellow-600',
+    dot: 'bg-yellow-500',
+    dotPartial: 'bg-yellow-300',
+    dotOff: 'bg-gray-300 dark:bg-gray-600',
+  },
+}
+
+function ToggleColumnHeader({
+  label,
+  description,
+  field,
+  sources,
+  color,
+  onBulkToggle,
+}: {
+  label: string
+  description: string
+  field: keyof SourceUpdate
+  sources: Source[]
+  color: string
+  onBulkToggle: (field: keyof SourceUpdate) => void
+}) {
+  const [showTooltip, setShowTooltip] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
+  const c = colorClasses[color]
+
+  const allOn = sources.every((s) => s[field as keyof Source])
+  const someOn = sources.some((s) => s[field as keyof Source])
+
+  return (
+    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+      <div className="relative">
+        <button
+          onClick={() => onBulkToggle(field)}
+          onMouseEnter={() => {
+            timeoutRef.current = setTimeout(() => setShowTooltip(true), 400)
+          }}
+          onMouseLeave={() => {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current)
+            setShowTooltip(false)
+          }}
+          className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider transition-colors ${
+            allOn ? c.text : someOn ? c.textPartial : 'text-gray-500 dark:text-gray-400'
+          } hover:opacity-80`}
+        >
+          <span className={`inline-block w-2 h-2 rounded-full ${
+            allOn ? c.dot : someOn ? c.dotPartial : c.dotOff
+          }`} />
+          {label}
+        </button>
+        {showTooltip && (
+          <div className="absolute z-50 bottom-full left-0 mb-2 w-52 px-3 py-2 text-xs font-normal normal-case tracking-normal text-gray-200 bg-gray-900 dark:bg-gray-700 rounded-md shadow-lg">
+            {description}
+            <div className="absolute top-full left-4 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-gray-900 dark:border-t-gray-700" />
+          </div>
+        )}
+      </div>
+    </th>
   )
 }
