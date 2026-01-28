@@ -140,39 +140,75 @@ export function SourcesPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Type
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   <button
                     onClick={() => handleBulkToggle('enabled')}
-                    className="hover:text-green-500 transition-colors"
+                    className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider transition-colors ${
+                      sources.every(s => s.enabled)
+                        ? 'text-green-600 dark:text-green-400'
+                        : sources.some(s => s.enabled)
+                        ? 'text-green-400 dark:text-green-600'
+                        : 'text-gray-500 dark:text-gray-400'
+                    } hover:text-green-500`}
                     title={sources.every(s => s.enabled) ? 'Disable all' : 'Enable all'}
                   >
+                    <span className={`inline-block w-2 h-2 rounded-full ${
+                      sources.every(s => s.enabled) ? 'bg-green-500' : sources.some(s => s.enabled) ? 'bg-green-300' : 'bg-gray-300 dark:bg-gray-600'
+                    }`} />
                     Enabled
                   </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   <button
                     onClick={() => handleBulkToggle('aggregate')}
-                    className="hover:text-blue-500 transition-colors"
+                    className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider transition-colors ${
+                      sources.every(s => s.aggregate)
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : sources.some(s => s.aggregate)
+                        ? 'text-blue-400 dark:text-blue-600'
+                        : 'text-gray-500 dark:text-gray-400'
+                    } hover:text-blue-500`}
                     title={sources.every(s => s.aggregate) ? 'Remove all from feed' : 'Add all to feed'}
                   >
+                    <span className={`inline-block w-2 h-2 rounded-full ${
+                      sources.every(s => s.aggregate) ? 'bg-blue-500' : sources.some(s => s.aggregate) ? 'bg-blue-300' : 'bg-gray-300 dark:bg-gray-600'
+                    }`} />
                     Aggregate
                   </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   <button
                     onClick={() => handleBulkToggle('auto_archive')}
-                    className="hover:text-purple-500 transition-colors"
+                    className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider transition-colors ${
+                      sources.every(s => s.auto_archive)
+                        ? 'text-purple-600 dark:text-purple-400'
+                        : sources.some(s => s.auto_archive)
+                        ? 'text-purple-400 dark:text-purple-600'
+                        : 'text-gray-500 dark:text-gray-400'
+                    } hover:text-purple-500`}
                     title={sources.every(s => s.auto_archive) ? 'Disable all archiving' : 'Enable all archiving'}
                   >
+                    <span className={`inline-block w-2 h-2 rounded-full ${
+                      sources.every(s => s.auto_archive) ? 'bg-purple-500' : sources.some(s => s.auto_archive) ? 'bg-purple-300' : 'bg-gray-300 dark:bg-gray-600'
+                    }`} />
                     Archive
                   </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                   <button
                     onClick={() => handleBulkToggle('auto_approve')}
-                    className="hover:text-yellow-500 transition-colors"
+                    className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider transition-colors ${
+                      sources.every(s => s.auto_approve)
+                        ? 'text-yellow-600 dark:text-yellow-400'
+                        : sources.some(s => s.auto_approve)
+                        ? 'text-yellow-400 dark:text-yellow-600'
+                        : 'text-gray-500 dark:text-gray-400'
+                    } hover:text-yellow-500`}
                     title={sources.every(s => s.auto_approve) ? 'Untrust all' : 'Trust all'}
                   >
+                    <span className={`inline-block w-2 h-2 rounded-full ${
+                      sources.every(s => s.auto_approve) ? 'bg-yellow-500' : sources.some(s => s.auto_approve) ? 'bg-yellow-300' : 'bg-gray-300 dark:bg-gray-600'
+                    }`} />
                     Trusted
                   </button>
                 </th>
