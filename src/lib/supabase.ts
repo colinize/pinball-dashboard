@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ztydjimkjcubxpelimcw.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+const supabaseUrl = 'https://ztydjimkjcubxpelimcw.supabase.co'
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0eWRqaW1ramN1YnhwZWxpbWN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk1MjA4MDUsImV4cCI6MjA4NTA5NjgwNX0.qNLK9l7uSet-tPPJfan5M9OwRoGkbYDBT1YjbLCjLqg'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
@@ -22,6 +22,12 @@ export interface Source {
   last_checked_at: string | null
   created_at: string
   updated_at: string
+  // Health tracking fields
+  last_error: string | null
+  last_error_at: string | null
+  last_success_at: string | null
+  consecutive_failures: number
+  circuit_breaker_until: string | null
 }
 
 export interface ContentItem {
@@ -57,5 +63,5 @@ export interface Notification {
   created_at: string
 }
 
-export type SourceCreate = Omit<Source, 'id' | 'created_at' | 'updated_at' | 'last_checked_at'>
+export type SourceCreate = Omit<Source, 'id' | 'created_at' | 'updated_at' | 'last_checked_at' | 'last_error' | 'last_error_at' | 'last_success_at' | 'consecutive_failures' | 'circuit_breaker_until'>
 export type SourceUpdate = Partial<SourceCreate>

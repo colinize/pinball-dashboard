@@ -78,4 +78,17 @@ export const sourcesApi = {
 
     if (error) throw error
   },
+
+  // Force check a source immediately (calls content-monitor API)
+  async forceCheck(id: number): Promise<{ status: string }> {
+    // The content-monitor backend runs on localhost:8000 by default
+    const CONTENT_MONITOR_URL = import.meta.env.VITE_CONTENT_MONITOR_URL || 'http://localhost:8000'
+    const response = await fetch(`${CONTENT_MONITOR_URL}/api/sources/${id}/check`, {
+      method: 'POST',
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to trigger source check: ${response.statusText}`)
+    }
+    return response.json()
+  },
 }

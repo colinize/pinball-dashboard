@@ -1,13 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { Layout } from '../components/Layout'
 import { sourcesApi } from '../api/sources'
 import type { Source, SourceCreate, SourceUpdate } from '../lib/supabase'
+
+type SortField = 'name' | 'source_type' | 'last_checked_at'
+type SortDir = 'asc' | 'desc'
 
 export function SourcesPage() {
   const [sources, setSources] = useState<Source[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingSource, setEditingSource] = useState<Source | null>(null)
+  const [sortField, setSortField] = useState<SortField>('name')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   const fetchSources = async () => {
     try {
@@ -80,6 +86,42 @@ export function SourcesPage() {
     }
   }
 
+  const handleForceCheck = async (source: Source) => {
+    try {
+      await sourcesApi.forceCheck(source.id)
+      alert(`Check triggered for ${source.name}. New items will appear shortly.`)
+    } catch (err) {
+      console.error('Failed to trigger check:', err)
+      alert(`Failed to trigger check: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
+  }
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
+
+  const sortedSources = [...sources].sort((a, b) => {
+    let aVal = a[sortField]
+    let bVal = b[sortField]
+
+    // Handle nulls
+    if (aVal === null) aVal = ''
+    if (bVal === null) bVal = ''
+
+    // String comparison
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      const cmp = aVal.toLowerCase().localeCompare(bVal.toLowerCase())
+      return sortDir === 'asc' ? cmp : -cmp
+    }
+
+    return 0
+  })
+
   const handleSave = async (data: SourceCreate) => {
     try {
       if (editingSource) {
@@ -107,7 +149,10 @@ export function SourcesPage() {
     <Layout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Sources</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Sources</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{sources.length} sources</p>
+          </div>
           <button
             onClick={() => {
               setEditingSource(null)
@@ -130,15 +175,31 @@ export function SourcesPage() {
           />
         )}
 
-        <div className="bg-white dark:bg-gray-800 shadow overflow-hidden rounded-lg">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-x-auto">
+          <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Name
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <button
+                    onClick={() => handleSort('name')}
+                    className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200"
+                  >
+                    Name
+                    {sortField === 'name' && (
+                      <span>{sortDir === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </button>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Type
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <button
+                    onClick={() => handleSort('source_type')}
+                    className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200"
+                  >
+                    Type
+                    {sortField === 'source_type' && (
+                      <span>{sortDir === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </button>
                 </th>
                 <ToggleColumnHeader
                   label="Enabled"
@@ -172,106 +233,127 @@ export function SourcesPage() {
                   color="yellow"
                   onBulkToggle={handleBulkToggle}
                 />
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                  Health
+                </th>
+                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
                   Last Checked
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-2 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {sources.map((source) => (
+              {sortedSources.map((source) => (
                 <tr key={source.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                  <td className="px-3 py-3 max-w-[200px]">
+                    <Link
+                      to="/sources/$sourceId"
+                      params={{ sourceId: String(source.id) }}
+                      className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline truncate block"
+                    >
                       {source.name}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">
+                    </Link>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
                       {source.url}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300">
+                  <td className="px-2 py-3 whitespace-nowrap">
+                    <span className="px-1.5 py-0.5 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300">
                       {source.source_type}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-2 py-3 whitespace-nowrap">
                     <button
+                      type="button"
                       onClick={() => handleToggleEnabled(source)}
-                      className={`w-10 h-6 rounded-full transition-colors ${
+                      className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer ${
                         source.enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
-                        className={`block w-4 h-4 bg-white rounded-full transform transition-transform ${
+                        className={`pointer-events-none block w-4 h-4 bg-white rounded-full transform transition-transform ${
                           source.enabled ? 'translate-x-5' : 'translate-x-1'
                         }`}
                       />
                     </button>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-2 py-3 whitespace-nowrap">
                     <button
+                      type="button"
                       onClick={() => handleToggleAggregate(source)}
-                      className={`w-10 h-6 rounded-full transition-colors ${
+                      className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer ${
                         source.aggregate ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
-                        className={`block w-4 h-4 bg-white rounded-full transform transition-transform ${
+                        className={`pointer-events-none block w-4 h-4 bg-white rounded-full transform transition-transform ${
                           source.aggregate ? 'translate-x-5' : 'translate-x-1'
                         }`}
                       />
                     </button>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-2 py-3 whitespace-nowrap">
                     <button
+                      type="button"
                       onClick={() => handleToggleAutoArchive(source)}
-                      className={`w-10 h-6 rounded-full transition-colors ${
+                      className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer ${
                         source.auto_archive ? 'bg-purple-500' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
-                        className={`block w-4 h-4 bg-white rounded-full transform transition-transform ${
+                        className={`pointer-events-none block w-4 h-4 bg-white rounded-full transform transition-transform ${
                           source.auto_archive ? 'translate-x-5' : 'translate-x-1'
                         }`}
                       />
                     </button>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-2 py-3 whitespace-nowrap">
                     <button
+                      type="button"
                       onClick={() => handleToggleAutoApprove(source)}
-                      className={`w-10 h-6 rounded-full transition-colors ${
+                      className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer ${
                         source.auto_approve ? 'bg-yellow-500' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
-                        className={`block w-4 h-4 bg-white rounded-full transform transition-transform ${
+                        className={`pointer-events-none block w-4 h-4 bg-white rounded-full transform transition-transform ${
                           source.auto_approve ? 'translate-x-5' : 'translate-x-1'
                         }`}
                       />
                     </button>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  <td className="px-2 py-3 whitespace-nowrap">
+                    <HealthIndicator source={source} />
+                  </td>
+                  <td className="px-2 py-3 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
                     {source.last_checked_at
-                      ? new Date(source.last_checked_at).toLocaleString()
+                      ? new Date(source.last_checked_at).toLocaleDateString()
                       : 'Never'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                  <td className="px-2 py-3 whitespace-nowrap text-right text-sm font-medium space-x-1">
+                    <button
+                      onClick={() => handleForceCheck(source)}
+                      className="text-green-600 dark:text-green-400 hover:text-green-900 px-1"
+                      title="Check this source for new content now"
+                    >
+                      Check
+                    </button>
                     <button
                       onClick={() => {
                         setEditingSource(source)
                         setShowForm(true)
                       }}
-                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900"
+                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 px-1"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDelete(source.id)}
-                      className="text-red-600 dark:text-red-400 hover:text-red-900"
+                      className="text-red-600 dark:text-red-400 hover:text-red-900 px-1"
                     >
-                      Delete
+                      Del
                     </button>
                   </td>
                 </tr>
@@ -503,7 +585,7 @@ function ToggleColumnHeader({
   const someOn = sources.some((s) => s[field as keyof Source])
 
   return (
-    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+    <th className="px-2 py-3 text-left text-xs font-medium uppercase tracking-wider">
       <div className="relative">
         <button
           onClick={() => onBulkToggle(field)}
@@ -514,7 +596,7 @@ function ToggleColumnHeader({
             if (timeoutRef.current) clearTimeout(timeoutRef.current)
             setShowTooltip(false)
           }}
-          className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider transition-colors ${
+          className={`flex items-center gap-1 text-xs font-medium uppercase tracking-wider transition-colors ${
             allOn ? c.text : someOn ? c.textPartial : 'text-gray-500 dark:text-gray-400'
           } hover:opacity-80`}
         >
@@ -524,12 +606,68 @@ function ToggleColumnHeader({
           {label}
         </button>
         {showTooltip && (
-          <div className="absolute z-50 bottom-full left-0 mb-2 w-52 px-3 py-2 text-xs font-normal normal-case tracking-normal text-gray-200 bg-gray-900 dark:bg-gray-700 rounded-md shadow-lg">
+          <div className="absolute z-[9999] top-full left-0 mt-2 w-48 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-gray-200 bg-gray-900 dark:bg-gray-700 rounded-md shadow-lg">
             {description}
-            <div className="absolute top-full left-4 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-gray-900 dark:border-t-gray-700" />
+            <div className="absolute bottom-full left-4 w-0 h-0 border-x-4 border-x-transparent border-b-4 border-b-gray-900 dark:border-b-gray-700" />
           </div>
         )}
       </div>
     </th>
+  )
+}
+
+function HealthIndicator({ source }: { source: Source }) {
+  const [showTooltip, setShowTooltip] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
+
+  // Determine health status
+  const isCircuitBroken = source.circuit_breaker_until && new Date(source.circuit_breaker_until) > new Date()
+  const hasRecentError = source.consecutive_failures > 0
+  const isHealthy = !isCircuitBroken && !hasRecentError
+
+  let statusColor: string
+  let statusText: string
+  let statusDetail: string
+
+  if (isCircuitBroken) {
+    statusColor = 'bg-red-500'
+    statusText = 'Disabled'
+    statusDetail = `Circuit breaker active until ${new Date(source.circuit_breaker_until!).toLocaleString()}. Last error: ${source.last_error || 'Unknown'}`
+  } else if (hasRecentError) {
+    statusColor = source.consecutive_failures >= 2 ? 'bg-orange-500' : 'bg-yellow-500'
+    statusText = `${source.consecutive_failures} failure${source.consecutive_failures !== 1 ? 's' : ''}`
+    statusDetail = source.last_error || 'Unknown error'
+  } else {
+    statusColor = 'bg-green-500'
+    statusText = 'Healthy'
+    statusDetail = source.last_success_at
+      ? `Last success: ${new Date(source.last_success_at).toLocaleString()}`
+      : 'No recent activity'
+  }
+
+  return (
+    <div className="relative">
+      <div
+        onMouseEnter={() => {
+          timeoutRef.current = setTimeout(() => setShowTooltip(true), 300)
+        }}
+        onMouseLeave={() => {
+          if (timeoutRef.current) clearTimeout(timeoutRef.current)
+          setShowTooltip(false)
+        }}
+        className="flex items-center gap-1.5 cursor-help"
+      >
+        <span className={`inline-block w-2 h-2 rounded-full ${statusColor}`} />
+        <span className={`text-xs ${isHealthy ? 'text-gray-500 dark:text-gray-400' : isCircuitBroken ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
+          {statusText}
+        </span>
+      </div>
+      {showTooltip && (
+        <div className="absolute z-[9999] top-full left-0 mt-2 w-64 px-2 py-1.5 text-xs font-normal text-gray-200 bg-gray-900 dark:bg-gray-700 rounded-md shadow-lg">
+          {statusDetail}
+          <div className="absolute bottom-full left-4 w-0 h-0 border-x-4 border-x-transparent border-b-4 border-b-gray-900 dark:border-b-gray-700" />
+        </div>
+      )}
+    </div>
   )
 }

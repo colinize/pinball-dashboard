@@ -131,6 +131,11 @@ export function ItemsPage() {
                       >
                         {item.title || 'Untitled'}
                       </a>
+                      {item.error_message && (
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400 truncate max-w-xs" title={item.error_message}>
+                          {item.error_message}
+                        </p>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {(item.sources as any)?.name || 'Unknown'}

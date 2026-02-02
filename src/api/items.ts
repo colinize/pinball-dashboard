@@ -111,4 +111,31 @@ export const itemsApi = {
     }
     return counts
   },
+
+  // Get count of stuck items (pending for >24 hours)
+  async getStuckItemsCount(): Promise<number> {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const { count, error } = await supabase
+      .from('content_items')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending')
+      .lt('discovered_at', oneDayAgo)
+
+    if (error) throw error
+    return count || 0
+  },
+
+  // Get stuck items (pending for >24 hours)
+  async getStuckItems(): Promise<ContentItem[]> {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const { data, error } = await supabase
+      .from('content_items')
+      .select('*, sources(name)')
+      .eq('status', 'pending')
+      .lt('discovered_at', oneDayAgo)
+      .order('discovered_at', { ascending: true })
+
+    if (error) throw error
+    return data || []
+  },
 }

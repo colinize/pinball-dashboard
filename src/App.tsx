@@ -1,9 +1,8 @@
 import { RouterProvider, createRouter, createRootRoute, createRoute } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AuthProvider, useAuth } from './lib/auth'
-import { LoginPage } from './pages/Login'
 import { DashboardPage } from './pages/Dashboard'
 import { SourcesPage } from './pages/Sources'
+import { SourceDetailPage } from './pages/SourceDetail'
 import { ItemsPage } from './pages/Items'
 import { QueuePage } from './pages/Queue'
 import { ReviewPage } from './pages/Review'
@@ -27,6 +26,12 @@ const sourcesRoute = createRoute({
   component: SourcesPage,
 })
 
+const sourceDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sources/$sourceId',
+  component: SourceDetailPage,
+})
+
 const itemsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/items',
@@ -46,36 +51,20 @@ const reviewRoute = createRoute({
 })
 
 // Build route tree
-const routeTree = rootRoute.addChildren([indexRoute, sourcesRoute, itemsRoute, queueRoute, reviewRoute])
+const routeTree = rootRoute.addChildren([indexRoute, sourcesRoute, sourceDetailRoute, itemsRoute, queueRoute, reviewRoute])
 
 // Create router
 const router = createRouter({ routeTree })
 
-// Auth-protected app wrapper
+// App wrapper (auth disabled for local development)
 function AuthenticatedApp() {
-  const { user, loading } = useAuth()
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return <LoginPage />
-  }
-
   return <RouterProvider router={router} />
 }
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AuthenticatedApp />
-      </AuthProvider>
+      <AuthenticatedApp />
     </QueryClientProvider>
   )
 }
