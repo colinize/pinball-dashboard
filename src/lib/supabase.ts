@@ -30,6 +30,20 @@ export interface Source {
   circuit_breaker_until: string | null
 }
 
+export interface ContentItemMetadata {
+  // YouTube metadata
+  channel?: string
+  channel_id?: string
+  duration?: number
+  view_count?: number
+  description?: string
+  // RSS/Podcast metadata
+  author?: string
+  summary?: string
+  enclosure_url?: string
+  enclosure_type?: string
+}
+
 export interface ContentItem {
   id: number
   source_id: number
@@ -48,6 +62,7 @@ export interface ContentItem {
   discovered_at: string
   processed_at: string | null
   approved: boolean
+  metadata_json: string | null
   sources?: Source
 }
 

@@ -138,4 +138,20 @@ export const itemsApi = {
     if (error) throw error
     return data || []
   },
+
+  // Get status counts for a specific source
+  async getSourceStatusCounts(sourceId: number): Promise<Record<string, number>> {
+    const { data, error } = await supabase
+      .from('content_items')
+      .select('status')
+      .eq('source_id', sourceId)
+
+    if (error) throw error
+
+    const counts: Record<string, number> = {}
+    for (const item of data || []) {
+      counts[item.status] = (counts[item.status] || 0) + 1
+    }
+    return counts
+  },
 }
