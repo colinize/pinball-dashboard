@@ -42,6 +42,7 @@ export interface ContentItemMetadata {
   summary?: string
   enclosure_url?: string
   enclosure_type?: string
+  image_url?: string  // Episode-specific artwork (podcast episode image)
 }
 
 export interface ContentItem {

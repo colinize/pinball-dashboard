@@ -436,8 +436,13 @@ function ItemCard({
   // Parse metadata from JSON
   const metadata: ContentItemMetadata = item.metadata_json ? JSON.parse(item.metadata_json) : {}
 
-  // Generate YouTube thumbnail URL from video ID
+  // Get thumbnail URL - check metadata first, then generate YouTube thumbnail
   const getThumbnailUrl = () => {
+    // Episode-specific image from metadata (extracted from RSS)
+    if (metadata.image_url) {
+      return metadata.image_url
+    }
+    // YouTube thumbnails from video ID
     if (sourceType === 'youtube_channel' && item.external_id) {
       return `https://img.youtube.com/vi/${item.external_id}/mqdefault.jpg`
     }
