@@ -80,3 +80,15 @@ export interface Notification {
 
 export type SourceCreate = Omit<Source, 'id' | 'created_at' | 'updated_at' | 'last_checked_at' | 'last_error' | 'last_error_at' | 'last_success_at' | 'consecutive_failures' | 'circuit_breaker_until'>
 export type SourceUpdate = Partial<SourceCreate>
+
+export interface WorkerStatus {
+  id: number
+  worker_id: string
+  last_heartbeat: string
+  status: 'running' | 'idle' | 'stopping'
+  hostname: string | null
+  version: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}

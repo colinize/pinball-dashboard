@@ -465,27 +465,25 @@ function ItemCard({
     return `${views} views`
   }
 
-  // Format relative time
-  const formatRelativeTime = (dateStr: string | null) => {
+  // Format date nicely
+  const formatDate = (dateStr: string | null) => {
     if (!dateStr) return null
     const date = new Date(dateStr)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMins / 60)
-    const diffDays = Math.floor(diffHours / 24)
-
-    if (diffDays > 30) return date.toLocaleDateString()
-    if (diffDays > 0) return `${diffDays}d ago`
-    if (diffHours > 0) return `${diffHours}h ago`
-    if (diffMins > 0) return `${diffMins}m ago`
-    return 'just now'
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
 
   const thumbnailUrl = getThumbnailUrl()
   const duration = formatDuration(metadata.duration)
   const viewCount = formatViewCount(metadata.view_count)
-  const timeAgo = formatRelativeTime(item.published_at || item.discovered_at)
+  const publishedDate = formatDate(item.published_at)
+  const author = metadata.author
+
+  // Build metadata parts for display
+  const metadataParts: string[] = []
+  if (publishedDate) metadataParts.push(publishedDate)
+  if (duration) metadataParts.push(duration)
+  if (author) metadataParts.push(author)
+  if (viewCount) metadataParts.push(viewCount)
 
   return (
     <div className="flex gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-750">
@@ -530,12 +528,12 @@ function ItemCard({
           {item.title || 'Untitled'}
         </a>
 
-        {/* Metadata line */}
-        <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
-          {duration && !thumbnailUrl && <span>{duration}</span>}
-          {viewCount && <span>{viewCount}</span>}
-          {timeAgo && <span>{timeAgo}</span>}
-        </div>
+        {/* Metadata line: "Dec 17, 2024 • 1:23:45 • Don & Jeff" */}
+        {metadataParts.length > 0 && (
+          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {metadataParts.join(' • ')}
+          </div>
+        )}
 
         {/* Error message */}
         {item.error_message && (

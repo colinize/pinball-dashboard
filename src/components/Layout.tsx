@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
+import { workerApi, type WorkerState, type WorkerStatusResult } from '../api/worker'
 
 const navItems = [
   { path: '/', label: 'Dashboard' },
@@ -9,41 +10,28 @@ const navItems = [
   { path: '/queue', label: 'Queue' },
 ]
 
-interface PipelineHealth {
-  status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown'
-  checks?: {
-    scheduler: boolean
-    database: boolean
-    archive_drive: boolean
-    archiver: boolean
-    transcriber: boolean
-  }
-  issues?: string[]
-}
-
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
-  const [health, setHealth] = useState<PipelineHealth>({ status: 'unknown' })
+  const [workerStatus, setWorkerStatus] = useState<WorkerStatusResult>({
+    state: 'unknown',
+    lastSeen: null,
+    worker: null,
+  })
 
   useEffect(() => {
-    async function fetchHealth() {
+    async function fetchWorkerStatus() {
       try {
-        const CONTENT_MONITOR_URL = import.meta.env.VITE_CONTENT_MONITOR_URL || 'http://localhost:8000'
-        const response = await fetch(`${CONTENT_MONITOR_URL}/health`)
-        if (response.ok) {
-          const data = await response.json()
-          setHealth(data)
-        } else {
-          setHealth({ status: 'unhealthy', issues: ['Content monitor unreachable'] })
-        }
+        const status = await workerApi.getStatus()
+        setWorkerStatus(status)
       } catch (err) {
-        setHealth({ status: 'unhealthy', issues: ['Content monitor unreachable'] })
+        console.error('Failed to fetch worker status:', err)
+        setWorkerStatus({ state: 'unknown', lastSeen: null, worker: null })
       }
     }
 
-    fetchHealth()
+    fetchWorkerStatus()
     // Refresh every minute
-    const interval = setInterval(fetchHealth, 60000)
+    const interval = setInterval(fetchWorkerStatus, 60000)
     return () => clearInterval(interval)
   }, [])
 
@@ -76,7 +64,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </nav>
             </div>
             <div className="flex items-center gap-4">
-              <PipelineStatusBadge health={health} />
+              <WorkerStatusBadge status={workerStatus} />
             </div>
           </div>
         </div>
@@ -90,37 +78,63 @@ export function Layout({ children }: { children: React.ReactNode }) {
   )
 }
 
-function PipelineStatusBadge({ health }: { health: PipelineHealth }) {
+function WorkerStatusBadge({ status }: { status: WorkerStatusResult }) {
   const [showTooltip, setShowTooltip] = useState(false)
 
-  const statusConfig = {
-    healthy: {
+  const statusConfig: Record<WorkerState, {
+    color: string
+    textColor: string
+    bgColor: string
+    label: string
+    description: string
+  }> = {
+    online: {
       color: 'bg-green-500',
       textColor: 'text-green-700 dark:text-green-400',
       bgColor: 'bg-green-100 dark:bg-green-900/20',
-      label: 'Pipeline Healthy',
+      label: 'Worker Online',
+      description: 'Processing feeds and downloads',
     },
-    degraded: {
+    idle: {
       color: 'bg-yellow-500',
       textColor: 'text-yellow-700 dark:text-yellow-400',
       bgColor: 'bg-yellow-100 dark:bg-yellow-900/20',
-      label: 'Pipeline Degraded',
+      label: 'Worker Idle',
+      description: 'Last seen recently, may be sleeping',
     },
-    unhealthy: {
-      color: 'bg-red-500',
-      textColor: 'text-red-700 dark:text-red-400',
-      bgColor: 'bg-red-100 dark:bg-red-900/20',
-      label: 'Pipeline Error',
+    offline: {
+      color: 'bg-gray-400',
+      textColor: 'text-gray-600 dark:text-gray-400',
+      bgColor: 'bg-gray-100 dark:bg-gray-700',
+      label: 'Worker Offline',
+      description: 'Not running - downloads paused',
     },
     unknown: {
       color: 'bg-gray-400',
       textColor: 'text-gray-600 dark:text-gray-400',
       bgColor: 'bg-gray-100 dark:bg-gray-700',
       label: 'Checking...',
+      description: 'Checking worker status',
     },
   }
 
-  const config = statusConfig[health.status]
+  const config = statusConfig[status.state]
+
+  const formatLastSeen = (isoString: string | null) => {
+    if (!isoString) return 'Never'
+    const date = new Date(isoString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    return date.toLocaleDateString()
+  }
 
   return (
     <div className="relative">
@@ -129,32 +143,27 @@ function PipelineStatusBadge({ health }: { health: PipelineHealth }) {
         onMouseLeave={() => setShowTooltip(false)}
         className={`flex items-center gap-2 px-3 py-1 rounded-full ${config.bgColor} cursor-help`}
       >
-        <span className={`w-2 h-2 rounded-full ${config.color} ${health.status === 'healthy' ? '' : 'animate-pulse'}`} />
+        <span className={`w-2 h-2 rounded-full ${config.color} ${status.state === 'online' ? '' : ''}`} />
         <span className={`text-xs font-medium ${config.textColor}`}>
           {config.label}
         </span>
       </div>
-      {showTooltip && health.checks && (
-        <div className="absolute z-50 top-full right-0 mt-2 w-64 p-3 bg-gray-900 dark:bg-gray-700 text-white rounded-lg shadow-lg">
-          <div className="space-y-2 text-xs">
-            {Object.entries(health.checks).map(([key, value]) => (
-              <div key={key} className="flex items-center justify-between">
-                <span className="capitalize">{key.replace(/_/g, ' ')}</span>
-                <span className={value ? 'text-green-400' : 'text-red-400'}>
-                  {value ? '✓' : '✗'}
-                </span>
-              </div>
-            ))}
-          </div>
-          {health.issues && health.issues.length > 0 && (
-            <div className="mt-2 pt-2 border-t border-gray-700">
-              <p className="text-xs text-red-300 font-medium mb-1">Issues:</p>
-              {health.issues.map((issue, i) => (
-                <p key={i} className="text-xs text-red-200">• {issue}</p>
-              ))}
-            </div>
+      {showTooltip && (
+        <div className="absolute z-50 top-full right-0 mt-2 w-56 p-3 bg-gray-900 dark:bg-gray-700 text-white rounded-lg shadow-lg">
+          <p className="text-sm font-medium mb-1">{config.description}</p>
+          <p className="text-xs text-gray-300">
+            Last seen: {formatLastSeen(status.lastSeen)}
+          </p>
+          {status.worker?.hostname && (
+            <p className="text-xs text-gray-400 mt-1">
+              Host: {status.worker.hostname}
+            </p>
           )}
-          <div className="absolute bottom-full right-4 w-0 h-0 border-x-4 border-x-transparent border-b-4 border-b-gray-900 dark:border-b-gray-700" />
+          {status.worker?.version && (
+            <p className="text-xs text-gray-400">
+              Version: {status.worker.version}
+            </p>
+          )}
         </div>
       )}
     </div>

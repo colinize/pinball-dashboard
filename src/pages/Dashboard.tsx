@@ -105,7 +105,7 @@ export function DashboardPage() {
                   {stats.stuckItems} item{stats.stuckItems !== 1 ? 's' : ''} stuck in queue
                 </h3>
                 <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                  These items have been pending for over 24 hours. The pipeline may need attention.
+                  These items have been pending for over 24 hours. The worker may need attention.
                 </p>
               </div>
               <Link
@@ -133,7 +133,7 @@ export function DashboardPage() {
           <StatCard title="Failed" value={stats?.failedItems || 0} color="red" />
         </div>
 
-        {/* Two-column layout for Recent Items and Activity Feed */}
+        {/* Two-column layout for Recent Items and Source Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Items */}
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
@@ -143,157 +143,168 @@ export function DashboardPage() {
               </h3>
               <div className="space-y-3">
                 {recentItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 last:border-0"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {item.title || 'Untitled'}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {item.sources?.name} • {new Date(item.discovered_at).toLocaleString()}
-                      </p>
-                    </div>
-                    <span
-                      className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                        item.status === 'complete'
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                          : item.status === 'failed'
-                          ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                          : item.status === 'pending'
-                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                      }`}
-                    >
-                      {item.status}
-                    </span>
-                  </div>
+                  <RecentItemRow key={item.id} item={item} />
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Activity Feed */}
-          <ActivityFeed />
+          {/* Source Activity */}
+          <SourceActivity />
         </div>
       </div>
     </Layout>
   )
 }
 
-function ActivityFeed() {
-  const [activity, setActivity] = useState<any[]>([])
+function RecentItemRow({ item }: { item: any }) {
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return null
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  const formatRelativeTime = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    return formatDate(dateStr)
+  }
+
+  // Prefer published_at over discovered_at
+  const displayDate = item.published_at
+    ? formatDate(item.published_at)
+    : formatRelativeTime(item.discovered_at)
+
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700 last:border-0">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+          {item.title || 'Untitled'}
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {item.sources?.name} • {displayDate}
+        </p>
+      </div>
+      <span
+        className={`ml-2 px-2 py-1 text-xs rounded-full ${
+          item.status === 'complete'
+            ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+            : item.status === 'failed'
+            ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+            : item.status === 'pending'
+            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+        }`}
+      >
+        {item.status}
+      </span>
+    </div>
+  )
+}
+
+function SourceActivity() {
+  const [recentSources, setRecentSources] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchActivity() {
+    async function fetchRecentSources() {
       try {
-        const CONTENT_MONITOR_URL = import.meta.env.VITE_CONTENT_MONITOR_URL || 'http://localhost:8000'
-        const response = await fetch(`${CONTENT_MONITOR_URL}/api/activity?limit=15`)
-        if (response.ok) {
-          const data = await response.json()
-          setActivity(data.activity || [])
-        }
+        // Get sources with recent activity (recently checked or with errors)
+        const { data } = await supabase
+          .from('sources')
+          .select('id, name, source_type, last_checked_at, last_success_at, last_error_at, last_error, consecutive_failures')
+          .not('last_checked_at', 'is', null)
+          .order('last_checked_at', { ascending: false })
+          .limit(15)
+
+        setRecentSources(data || [])
       } catch (err) {
-        console.error('Failed to fetch activity:', err)
+        console.error('Failed to fetch source activity:', err)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchActivity()
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchActivity, 30000)
+    fetchRecentSources()
+    // Refresh every minute
+    const interval = setInterval(fetchRecentSources, 60000)
     return () => clearInterval(interval)
   }, [])
 
-  const getEventIcon = (eventType: string) => {
-    switch (eventType) {
-      case 'source_checked':
-        return (
-          <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-          </svg>
-        )
-      case 'source_error':
-      case 'source_circuit_breaker':
-        return (
-          <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-        )
-      case 'item_discovered':
-        return (
-          <svg className="w-4 h-4 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" />
-          </svg>
-        )
-      case 'item_complete':
-        return (
-          <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-          </svg>
-        )
-      case 'item_failed':
-        return (
-          <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-          </svg>
-        )
-      default:
-        return (
-          <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-          </svg>
-        )
-    }
+  const formatRelativeTime = (dateStr: string | null) => {
+    if (!dateStr) return 'Never'
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    return date.toLocaleDateString()
   }
 
-  const formatTime = (isoString: string) => {
-    const date = new Date(isoString)
-    const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    const minutes = Math.floor(diff / 60000)
-    const hours = Math.floor(diff / 3600000)
-
-    if (minutes < 1) return 'just now'
-    if (minutes < 60) return `${minutes}m ago`
-    if (hours < 24) return `${hours}h ago`
-    return date.toLocaleDateString()
+  const getSourceIcon = (sourceType: string) => {
+    switch (sourceType) {
+      case 'youtube_channel':
+        return '📺'
+      case 'rss':
+        return '📡'
+      default:
+        return '🌐'
+    }
   }
 
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
       <div className="px-4 py-5 sm:p-6">
         <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-          Activity Feed
+          Source Activity
         </h3>
         {loading ? (
           <div className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">Loading...</div>
-        ) : activity.length === 0 ? (
+        ) : recentSources.length === 0 ? (
           <div className="text-sm text-gray-500 dark:text-gray-400">No recent activity</div>
         ) : (
           <div className="space-y-3 max-h-80 overflow-y-auto">
-            {activity.map((event) => (
-              <div
-                key={event.id}
-                className="flex items-start gap-3 py-2 border-b border-gray-200 dark:border-gray-700 last:border-0"
-              >
-                <div className="flex-shrink-0 mt-0.5">
-                  {getEventIcon(event.event_type)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 dark:text-white truncate">
-                    {event.message}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {event.source_name && `${event.source_name} • `}
-                    {formatTime(event.created_at)}
-                  </p>
-                </div>
-              </div>
-            ))}
+            {recentSources.map((source) => {
+              const hasError = source.consecutive_failures > 0
+              return (
+                <Link
+                  key={source.id}
+                  to={`/sources/${source.id}`}
+                  className="flex items-start gap-3 py-2 border-b border-gray-200 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-750 -mx-2 px-2 rounded"
+                >
+                  <div className="flex-shrink-0 mt-0.5 text-lg">
+                    {getSourceIcon(source.source_type)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-900 dark:text-white truncate">
+                        {source.name}
+                      </p>
+                      {hasError && (
+                        <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" title={source.last_error} />
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Checked {formatRelativeTime(source.last_checked_at)}
+                    </p>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         )}
       </div>
